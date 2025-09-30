@@ -16,7 +16,7 @@ export const App: React.FC = () => {
   const [loadingTodos, setLoadingTodos] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState<
-    'all' | 'active' | 'completed'
+  'all' | 'active' | 'completed'
   >('all');
   const [query, setQuery] = useState('');
 
@@ -25,8 +25,9 @@ export const App: React.FC = () => {
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
+  // Load todos on mount
   useEffect(() => {
-    const load = async () => {
+    const loadTodos = async () => {
       setLoadingTodos(true);
       try {
         const data = await getTodos();
@@ -40,8 +41,43 @@ export const App: React.FC = () => {
       }
     };
 
-    load();
+    loadTodos();
   }, []);
+
+  // Fetch user when selectedTodo changes
+  useEffect(() => {
+    if (!selectedTodo) {
+      return;
+    }
+
+    let isMounted = true;
+
+    setModalLoading(true);
+    setSelectedUser(null);
+
+    const fetchUser = async () => {
+      try {
+        const user = await getUser(selectedTodo.userId);
+
+        if (isMounted) {
+          setSelectedUser(user);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
+      } finally {
+        if (isMounted) {
+          setModalLoading(false);
+        }
+      }
+    };
+
+    fetchUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedTodo]);
 
   const applyFilters = (list: Todo[]) => {
     let result = [...list];
@@ -78,7 +114,7 @@ export const App: React.FC = () => {
     setQuery('');
   };
 
-  const handleShow = async (id: number) => {
+  const handleShow = (id: number) => {
     const todo = todos.find(t => t.id === id);
 
     if (!todo) {
@@ -86,30 +122,7 @@ export const App: React.FC = () => {
     }
 
     setSelectedTodo(todo);
-    setSelectedUser(null);
     setModalVisible(true);
-    setModalLoading(true);
-
-    let isActive = true;
-
-    try {
-      const user = await getUser(todo.userId);
-
-      if (isActive) {
-        setSelectedUser(user);
-      }
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-    } finally {
-      if (isActive) {
-        setModalLoading(false);
-      }
-    }
-
-    return () => {
-      isActive = false;
-    };
   };
 
   const handleCloseModal = () => {
